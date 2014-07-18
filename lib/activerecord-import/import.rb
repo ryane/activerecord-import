@@ -169,20 +169,24 @@ class ActiveRecord::Base
       if args.first.is_a?( Array ) and args.first.first.is_a? ActiveRecord::Base
         options = {}
         options.merge!( args.pop ) if args.last.is_a?(Hash)
+        skip_associations = options.delete(:skip_associations) == true
 
         models = args.first # the import argument parsing is too tangled for me ... I only want to prove the concept of saving recursively
         result = import_helper(models, options)
-        # now, for all the dirty associations, collect them into a new set of models, then recurse.
-        # notes:
-        #    does not handle associations that reference themselves
-        #    assumes that the only associations to be saved are marked with :autosave
-        #    should probably take a hash to associations to follow.
-        hash={}
-        models.each {|model| add_objects(hash, model) }
 
-        hash.each_pair do |class_name, assocs|
-          assocs.each_pair do |assoc_name, subobjects|
-            subobjects.first.class.import(subobjects, options) unless subobjects.empty?
+        unless skip_associations
+          # now, for all the dirty associations, collect them into a new set of models, then recurse.
+          # notes:
+          #    does not handle associations that reference themselves
+          #    assumes that the only associations to be saved are marked with :autosave
+          #    should probably take a hash to associations to follow.
+          hash={}
+          models.each {|model| add_objects(hash, model) }
+
+          hash.each_pair do |class_name, assocs|
+            assocs.each_pair do |assoc_name, subobjects|
+              subobjects.first.class.import(subobjects, options) unless subobjects.empty?
+            end
           end
         end
         result
